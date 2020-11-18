@@ -28,4 +28,3 @@ void android_main(struct android_app *app) {
 
     ANativeActivity_finish(app->activity);
 }
-
