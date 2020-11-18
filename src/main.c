@@ -1,5 +1,6 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
+#include <android/asset_manager.h>
 #include <stdlib.h>
 #include <string.h>
 

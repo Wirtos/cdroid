@@ -1,14 +1,10 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
 function(d msg)
     message(STATUS ${msg})
 endfunction()
 
-function(create_keystore alias_name password dname out)
-    set(BANDROID_ALIAS_NAME ${alias_name})
-    set(BANDROID_STOREPASS ${password})
-    set(BANDROID_KEYSTORE_DNAME ${dname})
-    set(BANDROID_KEYSTORE_FILE ${out})
+function(create_keystore keystore_alias keystore_pass keystore_dname out_file)
     if (DEFINED JAVA_HOME)
         set(JDK_TOOLS_DIR "${JAVA_HOME}/bin")
     elseif (DEFINED ENV{JAVA_HOME})
@@ -17,61 +13,69 @@ function(create_keystore alias_name password dname out)
         message(FATAL_ERROR "Can't find keytool from JDK, \
         set JAVA_HOME variable in cmake or add it to PATH")
     endif ()
+    file(TO_CMAKE_PATH ${JDK_TOOLS_DIR} JDK_TOOLS_DIR)
 
     add_custom_command(
-            OUTPUT ${BANDROID_KEYSTORE_FILE}
+            OUTPUT ${out_file}
             COMMAND ${JDK_TOOLS_DIR}/keytool
             -genkey
-            -keystore ${BANDROID_KEYSTORE_FILE}
-            -alias ${BANDROID_ALIAS_NAME}
+            -keystore ${out_file}
+            -alias ${keystore_alias}
             -keyalg RSA
             -keysize 2048
             -validity 10000
-            -storepass ${BANDROID_STOREPASS}
-            -keypass ${BANDROID_STOREPASS}
-            -dname \"${BANDROID_KEYSTORE_DNAME}\"
+            -storepass ${keystore_pass}
+            -keypass ${keystore_pass}
+            -dname \"${keystore_dname}\"
             COMMENT "Generating keystore")
 
     add_custom_target(
             create_keystore ALL
-            DEPENDS ${BANDROID_KEYSTORE_FILE}
+            DEPENDS ${out_file}
     )
 endfunction()
 
-function(create_debug_keystore out)
-    create_keystore("androidkey" "password" "CN=example.com, OU=ID, O=Example, L=Doe, S=John, C=GB" ${out})
+function(create_debug_keystore out_file)
+    create_keystore("androidkey" "password" "CN=example.com, OU=ID, O=Example, L=Doe, S=John, C=GB" ${out_file})
 endfunction()
 
 function(pack_apk main_target package_name app_name
         build_tools_version
         manifest assets_dir resources_dir
         keystore_file keystore_alias keystore_pass
-        out)
+        out_file)
 
     if (NOT DEFINED BANDROID_DEBUG)
-        if (CMAKE_BUILD_TYPE MATCHES DEBUG)
-            set(BANDROID_DEBUG true)
+        if (CMAKE_BUILD_TYPE MATCHES "Debug")
+            set(app_debug true)
         else ()
-            set(BANDROID_DEBUG false)
+            set(app_debug false)
         endif ()
     else ()
         if (BANDROID_DEBUG)
-            set(BANDROID_DEBUG true)
+            set(app_debug true)
         else ()
-            set(BANDROID_DEBUG false)
+            set(app_debug false)
         endif ()
     endif ()
 
-    set(BANDROID_PACKAGE_NAME ${package_name})
-    set(BANDROID_APP_NAME ${app_name})
+    if (DEFINED ANDROID_SDK)
+    elseif (DEFINED ENV{ANDROID_HOME})
+        set(ANDROID_SDK $ENV{ANDROID_HOME})
+    else ()
+        message(FATAL_ERROR "ANDROID_SDK cmake or ANDROID_HOME environment variable is not defined, \
+        define either one of those so it'd point to android sdk root")
+    endif ()
+    file(TO_CMAKE_PATH ${ANDROID_SDK} ANDROID_SDK)
 
     if (${build_tools_version} STREQUAL "latest")
-        # todo: find latest build tools available
-        message(FATAL_ERROR "Not implemented")
+        file(GLOB BANDROID_PLATFORMS "${ANDROID_SDK}/build-tools/*")
+        list(SORT BANDROID_PLATFORMS COMPARE NATURAL ORDER DESCENDING)
+        list(GET BANDROID_PLATFORMS 0 BANDROID_BUILD_TOOLS)
+        unset(BANDROID_PLATFORMS)
     else ()
         set(BANDROID_BUILD_TOOLS "${ANDROID_SDK}/build-tools/${build_tools_version}")
     endif ()
-
 
     set(BANDROID_APK_STRUCT_DIR "${CMAKE_CURRENT_BINARY_DIR}/apk")
     file(MAKE_DIRECTORY ${BANDROID_APK_STRUCT_DIR}/lib/${ANDROID_ABI})
@@ -81,25 +85,24 @@ function(pack_apk main_target package_name app_name
 
     configure_file(${manifest} ${BANDROID_MANIFEST})
 
-
-    #    get_target_property(OUT Target LINK_LIBRARIES)
-
     if (NOT EXISTS "${BANDROID_PLATFORMS_DIR}/${ANDROID_PLATFORM}")
-        message(FATAL_ERROR "Corresponding ANDROID_PLATFORM \"${ANDROID_PLATFORM}\" not found in ${BANDROID_PLATFORMS_DIR}")
+        message(FATAL_ERROR "Corresponding ANDROID_PLATFORM \"${ANDROID_PLATFORM}\" \
+        not found in ${BANDROID_PLATFORMS_DIR}, please see \
+        https://developer.android.com/ndk/guides/cmake#android_platform")
     endif ()
-    d(${CMAKE_C_COMPILER})
-    d(${ANDROID_NDK})
-    d(${ANDROID_SDK})
-    d(${ANDROID_ABI})
-    d(${ANDROID_PLATFORM})
-    d(${BANDROID_BUILD_TOOLS})
+
+    d("Using ANDROID_NDK: ${ANDROID_NDK}")
+    d("Using ANDROID_SDK: ${ANDROID_SDK}")
+    d("Using ANDROID_ABI: ${ANDROID_ABI}")
+    d("Using ANDROID_PLATFORM: ${ANDROID_PLATFORM}")
+    d("Using build tools: ${BANDROID_BUILD_TOOLS}")
 
     add_custom_command(
             TARGET ${main_target}
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:cdroid>
-            ${BANDROID_APK_STRUCT_DIR}/lib/${ANDROID_ABI}/${BANDROID_APP_NAME}.so
+            ${BANDROID_APK_STRUCT_DIR}/lib/${ANDROID_ABI}/lib${app_name}.so
 
             COMMAND ${BANDROID_BUILD_TOOLS}/aapt package
             -f
@@ -131,7 +134,7 @@ function(pack_apk main_target package_name app_name
             --ks ${keystore_file}
             --ks-key-alias ${keystore_alias}
             --ks-pass pass:${keystore_pass}
-            --out ${out}
+            --out ${out_file}
             ${CMAKE_CURRENT_BINARY_DIR}/temp_aligned.apk
 
             DEPENDS

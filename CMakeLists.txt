@@ -12,7 +12,7 @@ target_link_libraries(cdroid log android)
 
 set(keystore_file "${CMAKE_CURRENT_BINARY_DIR}/keystore.jks")
 create_debug_keystore(${keystore_file})
-pack_apk(cdroid "com.wirtos.awb" "awb" "30.0.2"
+pack_apk(cdroid "com.wirtos.awb" "awb" "latest"
         "${CMAKE_SOURCE_DIR}/android/AndroidManifest.xml.in"
         "${CMAKE_SOURCE_DIR}/android/assets"
         "${CMAKE_SOURCE_DIR}/android/res"
