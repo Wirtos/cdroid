@@ -21,7 +21,7 @@ set(keystore_file "${CMAKE_CURRENT_BINARY_DIR}/keystore.jks")
 create_debug_keystore(${keystore_file})
 # tie packaging process to the cdroid target build
 pack_apk(cdroid # target that declares anroid_main
-        "com.wirtos.awb_app" "awb app" # android package name and app title
+        "com.example.cdroid" "cdroid app" # android package name and app title
         "latest" # function will try to use latest build tools, can be a string like "30.0.1"
         android/AndroidManifest.xml.in # manifest to be configured (see cmake configure_file)
         android/assets # dir containing assets
