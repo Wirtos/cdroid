@@ -75,7 +75,7 @@ function(pack_apk main_target package_name app_name
         message(FATAL_ERROR "ANDROID_SDK cmake or ANDROID_HOME environment variable is not defined, \
         define either one of those so it'd point to android sdk root")
     endif ()
-    file(TO_CMAKE_PATH ${ANDROID_SDK} ANDROID_SDK)
+    file(TO_CMAKE_PATH "${ANDROID_SDK}" ANDROID_SDK)
 
     if (${build_tools_version} STREQUAL "latest")
         file(GLOB BANDROID_BUILD_TOOLS_DIRS "${ANDROID_SDK}/build-tools/*")
