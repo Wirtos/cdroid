@@ -53,6 +53,8 @@ function(pack_apk main_target package_name app_name
     get_filename_component(keystore_file "${keystore_file}" ABSOLUTE)
     get_filename_component(out_file "${out_file}" ABSOLUTE)
 
+    set(app_main "main") # entry library for NativeActivity
+
     if (NOT DEFINED BANDROID_DEBUG)
         if (CMAKE_BUILD_TYPE MATCHES "Debug")
             set(app_debug true)
@@ -66,6 +68,10 @@ function(pack_apk main_target package_name app_name
             set(app_debug false)
         endif ()
     endif ()
+    # ANDROID_NDK is a variable declared by NDK cmake toolchain file
+    set(ndk_glue_dir ${ANDROID_NDK}/sources/android/native_app_glue/)
+    target_sources(${main_target} PRIVATE ${ndk_glue_dir}/android_native_app_glue.c)
+    target_include_directories(${main_target} PRIVATE ${ndk_glue_dir})
 
     if (DEFINED ANDROID_SDK)
         # do nothing for now
@@ -122,7 +128,7 @@ function(pack_apk main_target package_name app_name
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
             $<TARGET_FILE:cdroid>
-            ${BANDROID_APK_ABI_DIR}/lib/${ANDROID_ABI}/lib${app_name}.so
+            ${BANDROID_APK_ABI_DIR}/lib/${ANDROID_ABI}/lib${app_main}.so
 
             COMMAND ${BANDROID_BUILD_TOOLS}/aapt package
             -f

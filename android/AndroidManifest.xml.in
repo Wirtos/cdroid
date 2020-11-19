@@ -13,7 +13,7 @@
         <activity android:name="android.app.NativeActivity"
                   android:configChanges="keyboardHidden|orientation"
                   android:label="${app_name}">
-            <meta-data android:name="android.app.lib_name" android:value="${app_name}"/>
+            <meta-data android:name="android.app.lib_name" android:value="${app_main}"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
